@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - OnlineOinkMarket
+name: Build and deploy ASP.Net Core app to Azure Web App - BackendNETAPI
 
 on:
   push:
@@ -11,52 +8,58 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
         with:
-          node-version: '18.x'
+          dotnet-version: '8.x'
 
-      - name: npm install, build, and test
-        run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+      # Restore dependencies
+      - name: Restore dependencies
+        run: dotnet restore BackendNETAPI.sln
 
-      - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
+      # Build the project
+      - name: Build with dotnet
+        run: dotnet build BackendNETAPI.sln --configuration Release --no-restore
 
+      # Publish the project
+      - name: dotnet publish
+        run: dotnet publish BackendNETAPI.sln -c Release -o ./publish
+
+      # Upload the published artifact for deployment
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: release.zip
+          name: .net-app
+          path: ./publish
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build
     environment:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    
+
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: .net-app
 
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
-      - name: 'Deploy to Azure Web App'
+      # Check contents of artifact directory (debugging step)
+      - name: List files in directory
+        run: dir
+
+      # Deploy to Azure Web App
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'OnlineOinkMarket'
+          app-name: 'BackendNETAPI20241020211453' # Ensure this matches your Azure App Service name
           slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_9C6D06F07B304700B41341905C8F754B }}
+          package: '.' # Use the path to the downloaded artifact
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_EAB134F039CF4128B04703F7B0D083DD }} # Ensure this is correct
